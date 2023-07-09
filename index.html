@@ -1867,13 +1867,20 @@ orquideas_union_area <-
     join = st_within
   )
 
+# Union 2
+orquideas_area <-
+orquideas_union_area |>
+  st_drop_geometry() |>
+  group_by(nombre_ac) |>
+  summarize(riqueza_especies_orquideas = n_distinct(species, na.rm = TRUE))
 </script>
  
 <script type="application/shiny-prerendered" data-context="server">
 # Función reactiva para filtrar los registros de presencia 
 
 filtrar_orquideas_union_area <- reactive({
-  orquideas_union_area_filtrados <- orquideas_union_area
+ orquideas_union_area_filtrados <- orquideas_union_area
+ 
   
 # Se realiza el filtro, solamente si el usario ha seleccionado una opción diferente a "Todas" en la lista de selección de especies
   
@@ -1886,10 +1893,16 @@ filtrar_orquideas_union_area <- reactive({
   # Filtro de años (lista de selección)
   if (input$anio != "Todos") {
    orquideas_union_area_filtrados <-
-  		 orquideas_union_area_filtrados |>
+  		 orquideas_union_areaa_filtrados |>
   		filter(year == input$anio)
   }
-  
+
+ filtrar_orquideas_area <- reactive({
+   orquideas_area_filtrados <- orquideas_area
+   
+  return(orquideas_area_filtrados)
+}) 
+    
 # Este bloque es solo para demostrar el funcionamiento de un slider Filtro de años (slider)
  orquideas_union_area_filtrados <-
  	orquideas_union_area_filtrados |>
@@ -1897,7 +1910,7 @@ filtrar_orquideas_union_area <- reactive({
   
   # Filtro de meses
   if (input$mes != "Todos") {
-  	orquideas_union_area_filtrados <-
+  orquideas_union_area_filtrados <-
   		 orquideas_union_area_filtrados |>
   		filter(month == input$mes)
   }
@@ -1908,19 +1921,17 @@ filtrar_orquideas_union_area <- reactive({
 # Tabla interactiva de registros de presencia
 output$tabla <- renderDataTable({
   orquideas_union_area <- filtrar_orquideas_union_area()
-  
+
   # Tabla interactiva
-   orquideas_union_area |>
-    st_drop_geometry() |>
-    select(species, nombre_ac,) |>
-    datatable(
-    	rownames = FALSE,
-      colnames = c("Especie", "Área"),
-      options = list(
-      	pageLength = 5,
-        language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
-      )
+ orquideas_area |>
+  arrange(desc(riqueza_especies_orquideas)) |>
+  datatable(
+    colnames = c("Área", "Riqueza de especies de Orquídeas"),
+    options = list(
+      pageLength = 5,
+      language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
     )
+  )
 })
 
 # Factor de color basado en los valores únicos de especies
@@ -1951,13 +1962,6 @@ output$mapa <- renderLeaflet({
     ),    
     group = "Orquídeas"
 		) |>
-  addLegend(
-    position = "bottomleft",    
-    pal = colores_especies,
-    values = orquideas_union_area$species,
-    title = "Especies de Orquídeas",
-    group = "Orquídeas"    
-  ) |>  
   addLayersControl(
     baseGroups = c(
       "OSM"
